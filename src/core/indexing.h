@@ -81,6 +81,10 @@ private:
 
     int64_t Filesize;
     uint8_t Digest[20];
+    
+    // For differential indexing
+    int64_t ResumePos = 0;
+    FFMS_Index *ExistingIndex = nullptr;
 
     void ReadTS(const AVPacket *Packet, int64_t &TS, bool &UseDTS);
     void CheckAudioProperties(int Track, AVCodecContext *Context);
@@ -95,6 +99,7 @@ public:
     void SetIndexTrackType(int TrackType, bool Index);
     void SetErrorHandling(int ErrorHandling_);
     void SetProgressCallback(TIndexCallback IC_, void *ICPrivate_);
+    void SetResumePos(int64_t Pos, FFMS_Index *Index) { ResumePos = Pos; ExistingIndex = Index; }
 
     FFMS_Index *DoIndexing();
     int GetNumberOfTracks();

@@ -55,7 +55,7 @@ endif
 include_HEADERS = $(top_srcdir)/include/ffms.h $(top_srcdir)/include/ffmscompat.h
 
 bin_PROGRAMS = src/index/ffmsindex
-src_index_ffmsindex_SOURCES = src/index/ffmsindex.cpp
+src_index_ffmsindex_SOURCES = src/index/ffmsindex.cpp src/index/differential_index.cpp src/index/differential_index.h
 if WINDOWS
 src_index_ffmsindex_LDFLAGS = -municode
 endif

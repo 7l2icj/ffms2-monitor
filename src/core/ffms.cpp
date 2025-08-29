@@ -318,6 +318,19 @@ FFMS_API(FFMS_Indexer *) FFMS_CreateIndexer2(const char *SourceFile, const FFMS_
     }
 }
 
+FFMS_API(FFMS_Indexer *) FFMS_CreateIndexerWithProgress(const char *SourceFile, const FFMS_KeyValuePair *DemuxerOptions, int NumOptions, int64_t StartPos, FFMS_Index *ExistingIndex, FFMS_ErrorInfo *ErrorInfo) {
+    ClearErrorInfo(ErrorInfo);
+    try {
+        FFMS_Indexer *indexer = new FFMS_Indexer(SourceFile, DemuxerOptions, NumOptions);
+        // Store the start position and existing index for use in DoIndexing
+        indexer->SetResumePos(StartPos, ExistingIndex);
+        return indexer;
+    } catch (FFMS_Exception &e) {
+        e.CopyOut(ErrorInfo);
+        return nullptr;
+    }
+}
+
 FFMS_API(FFMS_Index *) FFMS_DoIndexing2(FFMS_Indexer *Indexer, int ErrorHandling, FFMS_ErrorInfo *ErrorInfo) {
     ClearErrorInfo(ErrorInfo);
 

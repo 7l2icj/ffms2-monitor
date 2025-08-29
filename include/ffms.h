@@ -368,6 +368,9 @@ typedef struct FFMS_FrameInfo {
     int RepeatPict;
     int KeyFrame;
     int64_t OriginalPTS;
+    int64_t FilePos;        /* Byte position in file (for differential indexing) - Added in FFMS 2.40 */
+    int64_t SampleStart;    /* Audio sample start position - Added in FFMS 2.40 */
+    uint32_t SampleCount;   /* Audio sample count - Added in FFMS 2.40 */
 } FFMS_FrameInfo;
 
 typedef struct FFMS_VideoProperties {
@@ -470,6 +473,7 @@ FFMS_API(const FFMS_TrackTimeBase *) FFMS_GetTimeBase(FFMS_Track *T);
 FFMS_API(int) FFMS_WriteTimecodes(FFMS_Track *T, const char *TimecodeFile, FFMS_ErrorInfo *ErrorInfo);
 FFMS_API(FFMS_Indexer *) FFMS_CreateIndexer(const char *SourceFile, FFMS_ErrorInfo *ErrorInfo);
 FFMS_API(FFMS_Indexer *) FFMS_CreateIndexer2(const char *SourceFile, const FFMS_KeyValuePair *DemuxerOptions, int NumOptions, FFMS_ErrorInfo *ErrorInfo);
+FFMS_API(FFMS_Indexer *) FFMS_CreateIndexerWithProgress(const char *SourceFile, const FFMS_KeyValuePair *DemuxerOptions, int NumOptions, int64_t StartPos, FFMS_Index *ExistingIndex, FFMS_ErrorInfo *ErrorInfo); /* Added in FFMS 2.40 */
 FFMS_API(void) FFMS_TrackIndexSettings(FFMS_Indexer *Indexer, int Track, int Index, int); /* Pass 0 to last argument, kapt to preserve abi. Introduced in FFMS_VERSION ((2 << 24) | (21 << 16) | (0 << 8) | 0) */
 FFMS_API(void) FFMS_TrackTypeIndexSettings(FFMS_Indexer *Indexer, int TrackType, int Index, int); /* Pass 0 to last argument, kapt to preserve abi. Introduced in FFMS_VERSION ((2 << 24) | (21 << 16) | (0 << 8) | 0) */
 FFMS_API(void) FFMS_SetProgressCallback(FFMS_Indexer *Indexer, TIndexCallback IC, void *ICPrivate); /* Introduced in FFMS_VERSION ((2 << 24) | (21 << 16) | (0 << 8) | 0) */

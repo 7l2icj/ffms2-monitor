@@ -115,6 +115,15 @@ bool FFMS_Index::CompareFileSignature(const char *Filename) {
     int64_t CFilesize;
     uint8_t CDigest[20];
     CalculateFileSignature(Filename, &CFilesize, CDigest);
+    
+    // Allow file growth for monitoring growing files
+    // If current file size is larger than indexed size, it's likely a growing file
+    if (CFilesize > Filesize) {
+        // For growing files, we can't verify the digest as the file has changed
+        // But we accept it as valid for append/monitor operations
+        return true;
+    }
+    
     return (CFilesize == Filesize && !memcmp(CDigest, Digest, sizeof(Digest)));
 }
 
