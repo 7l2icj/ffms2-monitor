@@ -511,6 +511,20 @@ FFMS_Index *FFMS_Indexer::DoIndexing() {
         }
     }
 
+    // If we have a resume position, seek to it before reading packets
+    if (ResumePos > 0) {
+        // Use AVSEEK_FLAG_BYTE to seek by byte position
+        int64_t seek_result = avio_seek(FormatContext->pb, ResumePos, SEEK_SET);
+        if (seek_result < 0) {
+            // If seeking failed, fall back to reading from the beginning
+            // but skip packets until we reach the resume position
+            av_log(nullptr, AV_LOG_WARNING, "Failed to seek to byte position %lld, will scan from beginning\n", (long long)ResumePos);
+        } else {
+            // Clear any buffered packets after seeking
+            avformat_flush(FormatContext);
+        }
+    }
+
     AVPacket *Packet = av_packet_alloc();
     if (!Packet)
         throw FFMS_Exception(FFMS_ERROR_CODEC, FFMS_ERROR_ALLOCATION_FAILED,
@@ -521,6 +535,12 @@ FFMS_Index *FFMS_Indexer::DoIndexing() {
     enum AVPictureStructure LastPicStruct = AV_PICTURE_STRUCTURE_UNKNOWN;
     int ret;
     while ((ret = av_read_frame(FormatContext, Packet)) >= 0) {
+        // Skip packets that we've already indexed (when seeking failed)
+        if (ResumePos > 0 && Packet->pos >= 0 && Packet->pos < ResumePos) {
+            av_packet_unref(Packet);
+            continue;
+        }
+        
         // Update progress
         // FormatContext->pb can apparently be NULL when opening images.
         if (IC && FormatContext->pb) {
