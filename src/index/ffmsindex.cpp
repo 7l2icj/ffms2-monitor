@@ -256,7 +256,7 @@ void DoIndexing() {
     FFMS_Index *ExistingIndex = nullptr;
     int idleSeconds = 0;  // Track consecutive seconds without file growth
     
-    // Check for existing index
+    // Check for existing index ONCE, before the main loop
     if (AppendMode || MonitorMode) {
         ExistingIndex = FFMS_ReadIndex(CacheFile.c_str(), &E);
         if (!ExistingIndex && AppendMode && !MonitorMode) {

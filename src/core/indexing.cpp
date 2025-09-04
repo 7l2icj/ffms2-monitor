@@ -440,6 +440,48 @@ const char *FFMS_Indexer::GetTrackCodec(int Track) {
     return codec ? codec->name : nullptr;
 }
 
+// Helper function to copy frames from existing index up to a given position
+static void CopyExistingFramesToNewIndex(FFMS_Index* NewIndex, FFMS_Index* ExistingIndex, int64_t UpToPosition) {
+    if (!ExistingIndex || !NewIndex) return;
+    
+    // For each track in the existing index
+    for (size_t trackIdx = 0; trackIdx < ExistingIndex->size() && trackIdx < NewIndex->size(); trackIdx++) {
+        FFMS_Track& ExistingTrack = (*ExistingIndex)[trackIdx];
+        FFMS_Track& NewTrack = (*NewIndex)[trackIdx];
+        
+        // Copy track properties
+        NewTrack.TT = ExistingTrack.TT;
+        NewTrack.MaxBFrames = ExistingTrack.MaxBFrames;
+        NewTrack.UseDTS = ExistingTrack.UseDTS;
+        NewTrack.HasTS = ExistingTrack.HasTS;
+        NewTrack.HasDiscontTS = ExistingTrack.HasDiscontTS;
+        NewTrack.SampleRate = ExistingTrack.SampleRate;
+        NewTrack.LastDuration = ExistingTrack.LastDuration;
+        
+        // Copy frames that are before the resume position
+        for (size_t frameIdx = 0; frameIdx < ExistingTrack.size(); frameIdx++) {
+            // Access the internal frame data directly
+            if (frameIdx < ExistingTrack.size()) {
+                const FrameInfo& frame = ExistingTrack[frameIdx];
+                if (frame.FilePos < UpToPosition) {
+                    // Add this frame to the new track
+                    if (ExistingTrack.TT == FFMS_TYPE_VIDEO) {
+                        NewTrack.AddVideoFrame(frame.PTS, frame.DTS, frame.RepeatPict, 
+                                             frame.KeyFrame, frame.FrameType, 
+                                             frame.FilePos, frame.MarkedHidden, frame.SecondField);
+                    } else if (ExistingTrack.TT == FFMS_TYPE_AUDIO) {
+                        NewTrack.AddAudioFrame(frame.PTS, frame.DTS, 
+                                             frame.SampleStart, frame.SampleCount,
+                                             frame.KeyFrame, frame.FilePos, false);
+                    }
+                } else {
+                    break; // Stop when we reach frames past the resume position
+                }
+            }
+        }
+    }
+}
+
 FFMS_Index *FFMS_Indexer::DoIndexing() {
     std::vector<SharedAVContext> AVContexts(FormatContext->nb_streams);
 
@@ -508,6 +550,23 @@ FFMS_Index *FFMS_Indexer::DoIndexing() {
         } else {
             FormatContext->streams[i]->discard = AVDISCARD_ALL;
             IndexMask.erase(i);
+        }
+    }
+
+    // If we have an existing index and a resume position, copy the existing frames
+    if (ExistingIndex && ResumePos > 0) {
+        CopyExistingFramesToNewIndex(TrackIndices.get(), ExistingIndex, ResumePos);
+        
+        // Update CurrentSample for audio tracks based on copied frames
+        for (unsigned int i = 0; i < FormatContext->nb_streams; i++) {
+            if (i < ExistingIndex->size() && (*ExistingIndex)[i].TT == FFMS_TYPE_AUDIO && AVContexts[i].CodecContext) {
+                FFMS_Track& NewTrack = (*TrackIndices)[i];
+                if (!NewTrack.empty()) {
+                    // Access the last frame directly
+                    const FrameInfo& LastFrame = NewTrack[NewTrack.size() - 1];
+                    AVContexts[i].CurrentSample = LastFrame.SampleStart + LastFrame.SampleCount;
+                }
+            }
         }
     }
 
